@@ -78,7 +78,7 @@
       for (const pair of formData.entries()) { params.append(pair[0], pair[1]); }
 
       // Apps Script に送信
-      fetch("https://script.google.com/macros/s/AKfycbw2sOCuL5IhozOwwdISk_x7bGJe9w0xRiwLd0iaq2ye3YvjfUvWp2wJI6R42uxqA9Twvw/exec", {
+      fetch("https://script.google.com/macros/s/AKfycbwCFER6Imma6lql4iGSzkLHnVeEg3oIIqHmZrbep3zQ2e6L1GT8HX-LCmttaJR-H5gsUQ/exec", {
         method: "POST", body: params
       })
       .then(() => { showResultPage(formData.get('rating')); })
@@ -128,3 +128,4 @@
   </script>
 </body>
 </html>
+
