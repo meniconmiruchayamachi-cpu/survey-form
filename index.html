@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      margin: 0; padding: 0; font-family: Arial, sans-serif;
-      background: url('https://publicdomainq.net/images/201805/24s/publicdomainq-0022406tbp.jpg.pagespeed.ce.nDuw9NNEAR.jpg') no-repeat center center fixed;
-      background-size: cover; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
+      margin:0; padding:0; font-family:Arial,sans-serif;
+      background:url('https://publicdomainq.net/images/201805/24s/publicdomainq-0022406tbp.jpg.pagespeed.ce.nDuw9NNEAR.jpg') no-repeat center center fixed;
+      background-size:cover; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
     }
-    @media (max-width: 1024px) { body { background-size: cover; background-attachment: scroll; } }
-    .container { background: rgba(255,255,255,0.85); padding: 30px 20px; margin: 60px 15px; border-radius:10px; max-width:360px; width:100%; box-shadow:0 0 15px rgba(0,0,0,0.3); text-align:center; }
+    @media (max-width:1024px) { body { background-size:cover; background-attachment:scroll; } }
+    .container { background: rgba(255,255,255,0.85); padding:30px 20px; margin:60px 15px; border-radius:10px; max-width:360px; width:100%; box-shadow:0 0 15px rgba(0,0,0,0.3); text-align:center; }
     .logo img { max-width:100%; height:auto; margin-bottom:20px; }
     h2 { margin-bottom:20px; }
     label { font-weight:bold; display:block; margin-bottom:5px; text-align:left; }
@@ -19,11 +19,13 @@
     textarea { resize: vertical; }
     button { width:100%; padding:12px; font-size:16px; background-color:#007bff; color:white; border:none; border-radius:6px; cursor:pointer; transition:0.3s; }
     button:hover { background-color:#0056b3; }
+    button:disabled { background-color:#aaa; cursor:not-allowed; }
     .reason-container { display:none; margin-bottom:20px; }
     .card { padding:30px 20px; border-radius:14px; background:#fff; box-shadow:0 4px 16px rgba(0,0,0,0.1); margin-top:20px; }
     .icon { font-size:46px; margin-bottom:8px; }
     .btn { background-color:#f5d66d; color:#444; padding:14px 22px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:16px; display:inline-block; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
     .btn:hover { background-color:#f0c94d; transform:translateY(-2px);}
+    .loading { margin-top:15px; font-size:14px; color:#666; display:none; }
   </style>
 </head>
 <body>
@@ -48,40 +50,51 @@
         <textarea id="reason" name="reason" rows="4" placeholder="理由を入力してください..."></textarea>
       </div>
 
-      <button type="submit">送信</button>
+      <button type="submit" id="submitBtn">送信</button>
+      <div class="loading" id="loadingText">送信中…</div>
     </form>
   </div>
 
   <script>
-    const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1cs1n9LtLqkJCcqD9RYPQ2xaGiywonYkyC8xTd0E_BHk/edit?gid=0";
+    const form = document.getElementById('surveyForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingText = document.getElementById('loadingText');
 
     function toggleReasonField() {
       const rating = document.getElementById('rating').value;
       const reasonContainer = document.getElementById('reason-container');
-      reasonContainer.style.display = (rating === "1" || rating === "2" || rating === "3") ? "block" : "none";
+      reasonContainer.style.display = (rating==="1"||rating==="2"||rating==="3")?"block":"none";
     }
 
-    const form = document.getElementById('surveyForm');
     form.addEventListener('submit', function(e){
       e.preventDefault();
+
+      // 二重送信防止
+      submitBtn.disabled = true;
+      loadingText.style.display = "block";
+
       const formData = new FormData(form);
       const params = new URLSearchParams();
       for (const pair of formData.entries()) { params.append(pair[0], pair[1]); }
 
-      // Apps Script WebアプリにPOST
-      fetch("https://script.google.com/macros/s/AKfycbySa55Psm6qobM33yd7nojGsd15vnz-ME7Rdky0XF0U2QuAHPYZnYclHWmrp72vV5yqmw/exec", {
+      // Apps Script に送信
+      fetch("https://script.google.com/macros/s/AKfycbw2sOCuL5IhozOwwdISk_x7bGJe9w0xRiwLd0iaq2ye3YvjfUvWp2wJI6R42uxqA9Twvw/exec", {
         method: "POST", body: params
       })
       .then(() => { showResultPage(formData.get('rating')); })
-      .catch(err => { alert("送信に失敗しました。"); console.error(err); });
+      .catch(err => {
+        alert("送信に失敗しました。もう一度お試しください。");
+        console.error(err);
+        submitBtn.disabled = false;
+        loadingText.style.display = "none";
+      });
     });
 
-    function showResultPage(rating) {
+    function showResultPage(rating){
       const content = document.getElementById('content');
       const ratingNum = Number(rating);
 
-      if (ratingNum >= 4) {
-        // ★4以上 → 口コミ誘導
+      if(ratingNum >= 4){
         content.innerHTML = `
           <div class="card">
             <div class="icon">🌼</div>
@@ -92,17 +105,18 @@
         `;
         document.getElementById('reviewBtn').addEventListener('click', function(){
           const ua = navigator.userAgent.toLowerCase();
-          if (ua.includes('android')) { window.location.href = 'https://maps.app.goo.gl/woQxRVgHVLnzZuyA6'; }
-          else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) {
-            const scheme = 'comgooglemaps://?q=茶屋町なの花眼科';
-            const fallback = 'https://www.google.com/maps/search/?api=1&query=茶屋町なの花眼科';
-            const start = Date.now();
-            window.location.href = scheme;
-            setTimeout(()=>{ if(Date.now()-start<2000) window.location.href=fallback; },1500);
-          } else { window.location.href = 'https://www.google.com/maps/search/?api=1&query=茶屋町なの花眼科'; }
+          if(ua.includes('android')){ window.location.href='https://maps.app.goo.gl/woQxRVgHVLnzZuyA6'; }
+          else if(ua.includes('iphone')||ua.includes('ipad')||ua.includes('ipod')){
+            const scheme='comgooglemaps://?q=茶屋町なの花眼科';
+            const fallback='https://www.google.com/maps/search/?api=1&query=茶屋町なの花眼科';
+            const start=Date.now();
+            window.location.href=scheme;
+            setTimeout(()=>{if(Date.now()-start<2000) window.location.href=fallback;},1500);
+          } else {
+            window.location.href='https://www.google.com/maps/search/?api=1&query=茶屋町なの花眼科';
+          }
         });
       } else {
-        // ★3以下 → 通常お礼
         content.innerHTML = `
           <div class="card">
             <h2>ご回答ありがとうございました。</h2>
